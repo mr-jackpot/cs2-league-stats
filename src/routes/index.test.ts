@@ -1,0 +1,173 @@
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import request from "supertest";
+import Koa from "koa";
+import bodyParser from "koa-bodyparser";
+import { router } from "./index";
+import { errorHandler } from "../middleware/errorHandler";
+
+// Mock the faceit service
+vi.mock("../services/faceit", () => ({
+  ORGANIZERS: { ESEA: "esea-org-id" },
+  searchPlayers: vi.fn(),
+  getPlayerEseaSeasons: vi.fn(),
+  getPlayerStatsForCompetition: vi.fn(),
+}));
+
+import {
+  searchPlayers,
+  getPlayerEseaSeasons,
+  getPlayerStatsForCompetition,
+} from "../services/faceit";
+
+const mockSearchPlayers = vi.mocked(searchPlayers);
+const mockGetPlayerEseaSeasons = vi.mocked(getPlayerEseaSeasons);
+const mockGetPlayerStatsForCompetition = vi.mocked(getPlayerStatsForCompetition);
+
+// Create test app
+const createApp = () => {
+  const app = new Koa();
+  app.use(errorHandler);
+  app.use(bodyParser());
+  app.use(router.routes());
+  app.use(router.allowedMethods());
+  return app.callback();
+};
+
+describe("API Endpoints", () => {
+  describe("GET /health", () => {
+    it("should return health status", async () => {
+      const response = await request(createApp()).get("/health");
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe("ok");
+      expect(response.body.timestamp).toBeDefined();
+    });
+  });
+
+  describe("GET /", () => {
+    it("should return API info", async () => {
+      const response = await request(createApp()).get("/");
+
+      expect(response.status).toBe(200);
+      expect(response.body.name).toBe("CS2 League Stats API");
+      expect(response.body.version).toBe("1.0.0");
+    });
+  });
+
+  describe("GET /players/search", () => {
+    it("should search for players", async () => {
+      mockSearchPlayers.mockResolvedValueOnce({
+        items: [
+          {
+            player_id: "123",
+            nickname: "TestPlayer",
+            avatar: "https://example.com/avatar.jpg",
+            country: "US",
+          },
+        ],
+      });
+
+      const response = await request(createApp())
+        .get("/players/search")
+        .query({ nickname: "TestPlayer" });
+
+      expect(response.status).toBe(200);
+      expect(response.body.items).toHaveLength(1);
+      expect(response.body.items[0].nickname).toBe("TestPlayer");
+      expect(mockSearchPlayers).toHaveBeenCalledWith("TestPlayer", "cs2");
+    });
+
+    it("should return 400 when nickname is missing", async () => {
+      const response = await request(createApp()).get("/players/search");
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe("Query parameter 'nickname' is required");
+    });
+
+    it("should pass game parameter", async () => {
+      mockSearchPlayers.mockResolvedValueOnce({ items: [] });
+
+      await request(createApp())
+        .get("/players/search")
+        .query({ nickname: "Test", game: "csgo" });
+
+      expect(mockSearchPlayers).toHaveBeenCalledWith("Test", "csgo");
+    });
+  });
+
+  describe("GET /players/:playerId/esea", () => {
+    it("should return ESEA seasons for a player", async () => {
+      mockGetPlayerEseaSeasons.mockResolvedValueOnce([
+        {
+          competition_id: "comp-1",
+          competition_name: "ESEA S55",
+          competition_type: "championship",
+          organizer_id: "esea-org-id",
+          match_count: 10,
+        },
+      ]);
+
+      const response = await request(createApp()).get(
+        "/players/player-123/esea"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.player_id).toBe("player-123");
+      expect(response.body.seasons).toHaveLength(1);
+      expect(response.body.seasons[0].competition_name).toBe("ESEA S55");
+    });
+  });
+
+  describe("GET /players/:playerId/competitions/:competitionId/stats", () => {
+    it("should return player stats for a competition", async () => {
+      mockGetPlayerStatsForCompetition.mockResolvedValueOnce({
+        player_id: "player-123",
+        competition_id: "comp-1",
+        competition_name: "ESEA S55",
+        matches_played: 10,
+        wins: 7,
+        losses: 3,
+        win_rate: 70,
+        kills: 150,
+        deaths: 100,
+        assists: 50,
+        kd_ratio: 1.5,
+        adr: 85.5,
+        headshot_pct: 48,
+        mvps: 15,
+        multi_kills: { triples: 5, quads: 2, aces: 1 },
+      });
+
+      const response = await request(createApp()).get(
+        "/players/player-123/competitions/comp-1/stats"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.player_id).toBe("player-123");
+      expect(response.body.competition_id).toBe("comp-1");
+      expect(response.body.matches_played).toBe(10);
+      expect(response.body.kd_ratio).toBe(1.5);
+    });
+
+    it("should handle service errors gracefully", async () => {
+      mockGetPlayerStatsForCompetition.mockRejectedValueOnce(
+        new Error("FACEIT API error (500): Internal error")
+      );
+
+      const response = await request(createApp()).get(
+        "/players/player-123/competitions/comp-1/stats"
+      );
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBeDefined();
+    });
+  });
+
+  describe("404 handling", () => {
+    it("should return 404 for unknown routes", async () => {
+      const response = await request(createApp()).get("/unknown/route");
+
+      expect(response.status).toBe(404);
+    });
+  });
+});

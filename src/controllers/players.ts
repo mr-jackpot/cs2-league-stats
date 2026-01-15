@@ -40,9 +40,9 @@ export const getPlayerCompetitionStats = async (
   const { playerId, competitionId } = ctx.params;
   const game = (ctx.query.game as string) || "cs2";
 
-  if (!playerId || !competitionId) {
+  if (!competitionId) {
     ctx.status = 400;
-    ctx.body = { error: "Player ID and Competition ID are required" };
+    ctx.body = { error: "Competition ID is required" };
     return;
   }
 

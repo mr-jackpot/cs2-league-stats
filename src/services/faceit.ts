@@ -9,7 +9,7 @@ export const ORGANIZERS = {
 const getApiKey = (): string => {
   const apiKey = process.env.FACEIT_API_KEY;
   if (!apiKey) {
-    throw new Error("FACEIT_API_KEY environment variable is not set");
+    throw new Error("FACEIT_API_KEY environment variable is not set. Please set FACEIT_API_KEY in your environment (for example, in a .env file).");
   }
   return apiKey;
 };
