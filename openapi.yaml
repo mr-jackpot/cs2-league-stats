@@ -191,6 +191,7 @@ components:
       required:
         - name
         - version
+        - docs
       properties:
         name:
           type: string
@@ -198,6 +199,10 @@ components:
         version:
           type: string
           example: "1.0.0"
+        docs:
+          type: string
+          description: URL path to API documentation
+          example: /docs
 
     ErrorResponse:
       type: object
