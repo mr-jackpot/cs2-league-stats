@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
 import Koa from "koa";
 import bodyParser from "koa-bodyparser";
@@ -160,6 +160,39 @@ describe("API Endpoints", () => {
 
       expect(response.status).toBe(500);
       expect(response.body.error).toBeDefined();
+    });
+  });
+
+  describe("GET /docs", () => {
+    it("should return Swagger UI HTML", async () => {
+      const response = await request(createApp()).get("/docs");
+
+      expect(response.status).toBe(200);
+      expect(response.type).toBe("text/html");
+      expect(response.text).toContain("swagger-ui");
+      expect(response.text).toContain("CS2 League Stats API");
+    });
+  });
+
+  describe("GET /openapi.json", () => {
+    it("should return OpenAPI spec as JSON", async () => {
+      const response = await request(createApp()).get("/openapi.json");
+
+      expect(response.status).toBe(200);
+      expect(response.type).toBe("application/json");
+      expect(response.body.openapi).toBe("3.0.3");
+      expect(response.body.info.title).toBe("CS2 League Stats API");
+    });
+  });
+
+  describe("GET /openapi.yaml", () => {
+    it("should return OpenAPI spec as YAML", async () => {
+      const response = await request(createApp()).get("/openapi.yaml");
+
+      expect(response.status).toBe(200);
+      expect(response.type).toBe("text/yaml");
+      expect(response.text).toContain("openapi: 3.0.3");
+      expect(response.text).toContain("CS2 League Stats API");
     });
   });
 
