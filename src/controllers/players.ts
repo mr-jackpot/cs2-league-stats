@@ -1,10 +1,29 @@
 import type { Context } from "koa";
 import {
+  getPlayerById,
   getPlayerStatsForCompetition,
   getPlayerEseaSeasons,
   searchPlayers,
   ORGANIZERS,
 } from "../services/faceit";
+
+export const getPlayer = async (ctx: Context): Promise<void> => {
+  const { playerId } = ctx.params;
+
+  if (!playerId) {
+    ctx.status = 400;
+    ctx.body = { error: "Player ID is required" };
+    return;
+  }
+
+  const player = await getPlayerById(playerId);
+  ctx.body = {
+    player_id: player.player_id,
+    nickname: player.nickname,
+    avatar: player.avatar,
+    country: player.country,
+  };
+};
 
 export const searchPlayersByName = async (ctx: Context): Promise<void> => {
   const nickname = ctx.query.nickname as string | undefined;

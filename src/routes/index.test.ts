@@ -8,17 +8,20 @@ import { errorHandler } from "../middleware/errorHandler";
 // Mock the faceit service
 vi.mock("../services/faceit", () => ({
   ORGANIZERS: { ESEA: "esea-org-id" },
+  getPlayerById: vi.fn(),
   searchPlayers: vi.fn(),
   getPlayerEseaSeasons: vi.fn(),
   getPlayerStatsForCompetition: vi.fn(),
 }));
 
 import {
+  getPlayerById,
   searchPlayers,
   getPlayerEseaSeasons,
   getPlayerStatsForCompetition,
 } from "../services/faceit";
 
+const mockGetPlayerById = vi.mocked(getPlayerById);
 const mockSearchPlayers = vi.mocked(searchPlayers);
 const mockGetPlayerEseaSeasons = vi.mocked(getPlayerEseaSeasons);
 const mockGetPlayerStatsForCompetition = vi.mocked(getPlayerStatsForCompetition);
@@ -92,6 +95,37 @@ describe("API Endpoints", () => {
         .query({ nickname: "Test", game: "csgo" });
 
       expect(mockSearchPlayers).toHaveBeenCalledWith("Test", "csgo");
+    });
+  });
+
+  describe("GET /players/:playerId", () => {
+    it("should return player details", async () => {
+      mockGetPlayerById.mockResolvedValueOnce({
+        player_id: "player-123",
+        nickname: "TestPlayer",
+        avatar: "https://example.com/avatar.jpg",
+        country: "US",
+      });
+
+      const response = await request(createApp()).get("/players/player-123");
+
+      expect(response.status).toBe(200);
+      expect(response.body.player_id).toBe("player-123");
+      expect(response.body.nickname).toBe("TestPlayer");
+      expect(response.body.avatar).toBe("https://example.com/avatar.jpg");
+      expect(response.body.country).toBe("US");
+      expect(mockGetPlayerById).toHaveBeenCalledWith("player-123");
+    });
+
+    it("should handle player not found", async () => {
+      mockGetPlayerById.mockRejectedValueOnce(
+        new Error("FACEIT API error (404): Player not found")
+      );
+
+      const response = await request(createApp()).get("/players/unknown-id");
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBeDefined();
     });
   });
 
