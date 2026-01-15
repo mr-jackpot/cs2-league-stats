@@ -1,0 +1,394 @@
+openapi: 3.0.3
+info:
+  title: CS2 League Stats API
+  description: |
+    API to provide statistics for CS2 teams on ESEA/FACEIT.
+    Inspired by hltv.org but for amateur teams competing in ESEA leagues.
+  version: 1.0.0
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the API
+      operationId: getHealth
+      tags:
+        - System
+      responses:
+        "200":
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /:
+    get:
+      summary: API info
+      description: Returns basic information about the API
+      operationId: getApiInfo
+      tags:
+        - System
+      responses:
+        "200":
+          description: API information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiInfoResponse"
+
+  /players/search:
+    get:
+      summary: Search players
+      description: Search for players by nickname
+      operationId: searchPlayers
+      tags:
+        - Players
+      parameters:
+        - name: nickname
+          in: query
+          required: true
+          description: Player nickname to search for
+          schema:
+            type: string
+          example: MR-JACKPOT
+        - name: game
+          in: query
+          required: false
+          description: Game to search in
+          schema:
+            type: string
+            default: cs2
+            enum:
+              - cs2
+              - csgo
+      responses:
+        "200":
+          description: List of matching players
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerSearchResponse"
+        "400":
+          description: Missing required parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /players/{playerId}/esea:
+    get:
+      summary: Get player's ESEA seasons
+      description: Returns all ESEA seasons/competitions a player has participated in
+      operationId: getPlayerEseaSeasons
+      tags:
+        - Players
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          description: FACEIT player ID
+          schema:
+            type: string
+            format: uuid
+          example: 6204e106-724d-4814-a605-943767d61366
+        - name: game
+          in: query
+          required: false
+          description: Game to filter by
+          schema:
+            type: string
+            default: cs2
+      responses:
+        "200":
+          description: List of ESEA seasons
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerSeasonsResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /players/{playerId}/competitions/{competitionId}/stats:
+    get:
+      summary: Get player stats for a competition
+      description: Returns aggregated player statistics for a specific ESEA season/competition
+      operationId: getPlayerCompetitionStats
+      tags:
+        - Players
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          description: FACEIT player ID
+          schema:
+            type: string
+            format: uuid
+          example: 6204e106-724d-4814-a605-943767d61366
+        - name: competitionId
+          in: path
+          required: true
+          description: FACEIT competition/season ID
+          schema:
+            type: string
+            format: uuid
+          example: ad2c5d0b-b6ff-4851-b3ac-b328dbb6d6c7
+        - name: game
+          in: query
+          required: false
+          description: Game to filter by
+          schema:
+            type: string
+            default: cs2
+      responses:
+        "200":
+          description: Player statistics for the competition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerSeasonStats"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error (e.g., FACEIT API failure)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          example: ok
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-01-15T12:00:00.000Z"
+
+    ApiInfoResponse:
+      type: object
+      required:
+        - name
+        - version
+      properties:
+        name:
+          type: string
+          example: CS2 League Stats API
+        version:
+          type: string
+          example: "1.0.0"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: "Query parameter 'nickname' is required"
+
+    PlayerSearchItem:
+      type: object
+      required:
+        - player_id
+        - nickname
+        - avatar
+        - country
+      properties:
+        player_id:
+          type: string
+          format: uuid
+          example: 6204e106-724d-4814-a605-943767d61366
+        nickname:
+          type: string
+          example: MR-JACKPOT
+        avatar:
+          type: string
+          format: uri
+          example: https://distribution.faceit-cdn.net/images/example.jpg
+        country:
+          type: string
+          example: GB
+
+    PlayerSearchResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerSearchItem"
+
+    CompetitionInfo:
+      type: object
+      required:
+        - competition_id
+        - competition_name
+        - competition_type
+        - organizer_id
+        - match_count
+      properties:
+        competition_id:
+          type: string
+          format: uuid
+          example: ad2c5d0b-b6ff-4851-b3ac-b328dbb6d6c7
+        competition_name:
+          type: string
+          example: ESEA S55 EU Open10 Central - Regular Season
+        competition_type:
+          type: string
+          example: championship
+        organizer_id:
+          type: string
+          format: uuid
+          example: 08b06cfc-74d0-454b-9a51-feda4b6b18da
+        match_count:
+          type: integer
+          example: 13
+
+    PlayerSeasonsResponse:
+      type: object
+      required:
+        - player_id
+        - organizer_id
+        - seasons
+      properties:
+        player_id:
+          type: string
+          format: uuid
+          example: 6204e106-724d-4814-a605-943767d61366
+        organizer_id:
+          type: string
+          format: uuid
+          description: ESEA organizer ID
+          example: 08b06cfc-74d0-454b-9a51-feda4b6b18da
+        seasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitionInfo"
+
+    MultiKills:
+      type: object
+      required:
+        - triples
+        - quads
+        - aces
+      properties:
+        triples:
+          type: integer
+          description: Number of 3K rounds
+          example: 11
+        quads:
+          type: integer
+          description: Number of 4K rounds
+          example: 3
+        aces:
+          type: integer
+          description: Number of 5K rounds (aces)
+          example: 1
+
+    PlayerSeasonStats:
+      type: object
+      required:
+        - player_id
+        - competition_id
+        - competition_name
+        - matches_played
+        - wins
+        - losses
+        - win_rate
+        - kills
+        - deaths
+        - assists
+        - kd_ratio
+        - adr
+        - headshot_pct
+        - mvps
+        - multi_kills
+      properties:
+        player_id:
+          type: string
+          format: uuid
+          example: 6204e106-724d-4814-a605-943767d61366
+        competition_id:
+          type: string
+          format: uuid
+          example: ad2c5d0b-b6ff-4851-b3ac-b328dbb6d6c7
+        competition_name:
+          type: string
+          example: ESEA S55 EU Open10 Central - Regular Season
+        matches_played:
+          type: integer
+          description: Total matches played in the competition
+          example: 11
+        wins:
+          type: integer
+          example: 8
+        losses:
+          type: integer
+          example: 3
+        win_rate:
+          type: integer
+          description: Win percentage (0-100)
+          example: 73
+        kills:
+          type: integer
+          description: Total kills across all matches
+          example: 188
+        deaths:
+          type: integer
+          description: Total deaths across all matches
+          example: 143
+        assists:
+          type: integer
+          description: Total assists across all matches
+          example: 63
+        kd_ratio:
+          type: number
+          format: float
+          description: Average K/D ratio
+          example: 1.43
+        adr:
+          type: number
+          format: float
+          description: Average damage per round
+          example: 89.71
+        headshot_pct:
+          type: number
+          format: float
+          description: Average headshot percentage
+          example: 50.82
+        mvps:
+          type: integer
+          description: Total MVP awards
+          example: 26
+        multi_kills:
+          $ref: "#/components/schemas/MultiKills"
+
+tags:
+  - name: System
+    description: System endpoints
+  - name: Players
+    description: Player statistics endpoints
