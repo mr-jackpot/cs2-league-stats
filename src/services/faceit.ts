@@ -108,6 +108,12 @@ const getMatchStats = async (matchId: string): Promise<MatchStatsResponse> => {
 };
 
 // Public API
+export const getPlayerById = async (
+  playerId: string
+): Promise<{ player_id: string; nickname: string; avatar: string; country: string }> => {
+  return faceitFetch(`/players/${playerId}`);
+};
+
 export const searchPlayers = async (
   nickname: string,
   game = "cs2",

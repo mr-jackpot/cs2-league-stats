@@ -4,6 +4,7 @@ import { parse } from "yaml";
 import { join } from "path";
 import { healthCheck } from "../controllers/health";
 import {
+  getPlayer,
   getPlayerCompetitionStats,
   listPlayerEseaSeasons,
   searchPlayersByName,
@@ -84,6 +85,7 @@ router.get("/docs", (ctx) => {
 
 // Players
 router.get("/players/search", searchPlayersByName);
+router.get("/players/:playerId", getPlayer);
 router.get("/players/:playerId/esea", listPlayerEseaSeasons);
 router.get(
   "/players/:playerId/competitions/:competitionId/stats",
