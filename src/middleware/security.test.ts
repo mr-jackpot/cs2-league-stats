@@ -18,7 +18,7 @@ vi.mock("../services/faceit", () => ({
   getPlayerStatsForCompetition: vi.fn(),
 }));
 
-import { searchPlayers } from "../services/faceit";
+import { searchPlayers } from "../services/faceit.js";
 const mockSearchPlayers = vi.mocked(searchPlayers);
 
 const createTestApp = (options: {
@@ -28,7 +28,7 @@ const createTestApp = (options: {
   const app = new Koa();
 
   const corsOptions = {
-    origin: (ctx: Koa.Context): string | false => {
+    origin: (ctx: Koa.Context): string => {
       const requestOrigin = ctx.get("Origin");
       const allowedOrigins = options.allowedOrigins || [];
 
@@ -40,7 +40,7 @@ const createTestApp = (options: {
         return requestOrigin;
       }
 
-      return false;
+      return "";
     },
   };
 
@@ -141,10 +141,7 @@ describe("Security Middleware", () => {
         db: db,
         duration: 60000,
         max: 2,
-        errorMessage: {
-          error: "Too many requests",
-          message: "Rate limit exceeded. Please try again later.",
-        },
+        errorMessage: "Rate limit exceeded. Please try again later.",
         id: (ctx) => ctx.ip,
       });
 
@@ -159,7 +156,7 @@ describe("Security Middleware", () => {
       const response = await request(testApp).get("/health");
 
       expect(response.status).toBe(429);
-      expect(response.body.error).toBe("Too many requests");
+      expect(response.text).toContain("Rate limit exceeded");
     });
   });
 
@@ -184,7 +181,7 @@ describe("Security Middleware", () => {
     });
 
     it("should accept valid alphanumeric playerId", async () => {
-      const { getPlayerById } = await import("../services/faceit");
+      const { getPlayerById } = await import("../services/faceit.js");
       vi.mocked(getPlayerById).mockResolvedValueOnce({
         player_id: "valid-player-123",
         nickname: "TestPlayer",

@@ -21,7 +21,7 @@ const getAllowedOrigins = (): string[] => {
 };
 
 const corsOptions = {
-  origin: (ctx: Koa.Context): string | false => {
+  origin: (ctx: Koa.Context): string => {
     const requestOrigin = ctx.get("Origin");
     const allowedOrigins = getAllowedOrigins();
 
@@ -42,7 +42,7 @@ const corsOptions = {
       return requestOrigin;
     }
 
-    return false;
+    return "";
   },
 };
 
