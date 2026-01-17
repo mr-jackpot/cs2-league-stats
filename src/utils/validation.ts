@@ -22,7 +22,7 @@ export const competitionIdSchema = z
   .regex(/^[a-zA-Z0-9_-]+$/, "Competition ID contains invalid characters");
 
 export const gameSchema = z.enum(["cs2", "csgo"], {
-  errorMap: () => ({ message: "Game must be 'cs2' or 'csgo'" }),
+  message: "Game must be 'cs2' or 'csgo'",
 });
 
 export type PlayerId = z.infer<typeof playerIdSchema>;
