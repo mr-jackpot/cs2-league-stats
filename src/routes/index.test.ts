@@ -84,7 +84,8 @@ describe("API Endpoints", () => {
       const response = await request(createApp()).get("/players/search");
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe("Query parameter 'nickname' is required");
+      expect(response.body.error).toBe("Validation error");
+      expect(response.body.details).toBeDefined();
     });
 
     it("should pass game parameter", async () => {

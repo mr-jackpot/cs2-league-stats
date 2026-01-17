@@ -1,4 +1,5 @@
 import type { Context } from "koa";
+import { ZodError } from "zod";
 import {
   getPlayerById,
   getPlayerStatsForCompetition,
@@ -6,13 +7,35 @@ import {
   searchPlayers,
   ORGANIZERS,
 } from "../services/faceit";
+import {
+  validatePlayerId,
+  validateNickname,
+  validateCompetitionId,
+  validateGame,
+} from "../utils/validation";
+
+const handleValidationError = (ctx: Context, error: unknown): void => {
+  if (error instanceof ZodError) {
+    ctx.status = 400;
+    ctx.body = {
+      error: "Validation error",
+      details: error.issues.map((e) => ({
+        field: e.path.join(".") || "input",
+        message: e.message,
+      })),
+    };
+    return;
+  }
+  throw error;
+};
 
 export const getPlayer = async (ctx: Context): Promise<void> => {
-  const { playerId } = ctx.params;
+  let playerId: string;
 
-  if (!playerId) {
-    ctx.status = 400;
-    ctx.body = { error: "Player ID is required" };
+  try {
+    playerId = validatePlayerId(ctx.params.playerId);
+  } catch (error) {
+    handleValidationError(ctx, error);
     return;
   }
 
@@ -26,12 +49,14 @@ export const getPlayer = async (ctx: Context): Promise<void> => {
 };
 
 export const searchPlayersByName = async (ctx: Context): Promise<void> => {
-  const nickname = ctx.query.nickname as string | undefined;
-  const game = (ctx.query.game as string) || "cs2";
+  let nickname: string;
+  let game: string;
 
-  if (!nickname) {
-    ctx.status = 400;
-    ctx.body = { error: "Query parameter 'nickname' is required" };
+  try {
+    nickname = validateNickname(ctx.query.nickname);
+    game = validateGame(ctx.query.game);
+  } catch (error) {
+    handleValidationError(ctx, error);
     return;
   }
 
@@ -40,12 +65,14 @@ export const searchPlayersByName = async (ctx: Context): Promise<void> => {
 };
 
 export const listPlayerEseaSeasons = async (ctx: Context): Promise<void> => {
-  const { playerId } = ctx.params;
-  const game = (ctx.query.game as string) || "cs2";
+  let playerId: string;
+  let game: string;
 
-  if (!playerId) {
-    ctx.status = 400;
-    ctx.body = { error: "Player ID is required" };
+  try {
+    playerId = validatePlayerId(ctx.params.playerId);
+    game = validateGame(ctx.query.game);
+  } catch (error) {
+    handleValidationError(ctx, error);
     return;
   }
 
@@ -56,12 +83,16 @@ export const listPlayerEseaSeasons = async (ctx: Context): Promise<void> => {
 export const getPlayerCompetitionStats = async (
   ctx: Context
 ): Promise<void> => {
-  const { playerId, competitionId } = ctx.params;
-  const game = (ctx.query.game as string) || "cs2";
+  let playerId: string;
+  let competitionId: string;
+  let game: string;
 
-  if (!competitionId) {
-    ctx.status = 400;
-    ctx.body = { error: "Competition ID is required" };
+  try {
+    playerId = validatePlayerId(ctx.params.playerId);
+    competitionId = validateCompetitionId(ctx.params.competitionId);
+    game = validateGame(ctx.query.game);
+  } catch (error) {
+    handleValidationError(ctx, error);
     return;
   }
 
