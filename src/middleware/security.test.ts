@@ -4,6 +4,7 @@ import Koa from "koa";
 import bodyParser from "koa-bodyparser";
 import cors from "@koa/cors";
 import helmet from "koa-helmet";
+import ratelimit from "koa-ratelimit";
 import { router } from "../routes";
 import { errorHandler } from "./errorHandler";
 import { rateLimiter } from "./rateLimit";
@@ -131,6 +132,34 @@ describe("Security Middleware", () => {
       expect(response.status).toBe(200);
       expect(response.headers["x-ratelimit-limit"]).toBeDefined();
       expect(response.headers["x-ratelimit-remaining"]).toBeDefined();
+    });
+
+    it("should return 429 when rate limit exceeded", async () => {
+      const db = new Map();
+      const strictRateLimiter = ratelimit({
+        driver: "memory",
+        db: db,
+        duration: 60000,
+        max: 2,
+        errorMessage: {
+          error: "Too many requests",
+          message: "Rate limit exceeded. Please try again later.",
+        },
+        id: (ctx) => ctx.ip,
+      });
+
+      const app = new Koa();
+      app.use(errorHandler);
+      app.use(strictRateLimiter);
+      app.use(router.routes());
+      const testApp = app.callback();
+
+      await request(testApp).get("/health");
+      await request(testApp).get("/health");
+      const response = await request(testApp).get("/health");
+
+      expect(response.status).toBe(429);
+      expect(response.body.error).toBe("Too many requests");
     });
   });
 

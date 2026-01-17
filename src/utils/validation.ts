@@ -11,7 +11,7 @@ export const nicknameSchema = z
   .min(1, "Nickname is required")
   .max(100, "Nickname is too long")
   .regex(
-    /^[a-zA-Z0-9_\-\s.]+$/,
+    /^[a-zA-Z0-9_.\s-]+$/,
     "Nickname contains invalid characters"
   );
 

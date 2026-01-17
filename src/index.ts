@@ -29,7 +29,12 @@ const corsOptions = {
       return requestOrigin || "*";
     }
 
-    if (process.env.NODE_ENV === "development" && requestOrigin?.includes("localhost")) {
+    if (
+      process.env.NODE_ENV === "development" &&
+      requestOrigin &&
+      (requestOrigin.startsWith("http://localhost:") ||
+        requestOrigin.startsWith("https://localhost:"))
+    ) {
       return requestOrigin;
     }
 
