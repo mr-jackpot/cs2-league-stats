@@ -54,16 +54,9 @@ const getApiKeyMiddleware = () => {
     return null;
   }
 
-  const debugKey = process.env.DEBUG_API_KEY;
-  const allowDebugInProd = process.env.ALLOW_DEBUG_KEY_IN_PRODUCTION === "true";
-
   return createApiKeyAuth({
     apiKey,
-    debugKey:
-      process.env.NODE_ENV !== "production" || allowDebugInProd
-        ? debugKey
-        : undefined,
-    excludePaths: ["/health", "/docs", "/openapi.yaml", "/openapi.json", "/"],
+    excludePaths: ["/health", "/docs", "/openapi.yaml", "/openapi.json"],
   });
 };
 

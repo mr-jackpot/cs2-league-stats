@@ -2,12 +2,11 @@ import type { Context, Next } from "koa";
 
 export interface ApiKeyAuthOptions {
   apiKey: string;
-  debugKey?: string;
   excludePaths?: string[];
 }
 
 export const createApiKeyAuth = (options: ApiKeyAuthOptions) => {
-  const { apiKey, debugKey, excludePaths = [] } = options;
+  const { apiKey, excludePaths = [] } = options;
 
   return async (ctx: Context, next: Next): Promise<void> => {
     // Skip auth for excluded paths (health checks, docs)
@@ -19,12 +18,6 @@ export const createApiKeyAuth = (options: ApiKeyAuthOptions) => {
     const providedKey = ctx.get("X-API-Key");
 
     if (providedKey === apiKey) {
-      await next();
-      return;
-    }
-
-    if (debugKey && providedKey === debugKey) {
-      console.log(`[DEBUG ACCESS] ${ctx.method} ${ctx.path} from ${ctx.ip}`);
       await next();
       return;
     }

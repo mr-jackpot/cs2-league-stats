@@ -6,7 +6,6 @@ import { createApiKeyAuth } from "./apiKeyAuth";
 
 const createTestApp = (options: {
   apiKey: string;
-  debugKey?: string;
   excludePaths?: string[];
 }): ReturnType<Koa["callback"]> => {
   const app = new Koa();
@@ -33,7 +32,6 @@ const createTestApp = (options: {
 
 describe("API Key Authentication Middleware", () => {
   const validApiKey = "test-api-key-123";
-  const validDebugKey = "debug-key-456";
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -90,44 +88,6 @@ describe("API Key Authentication Middleware", () => {
         .set("X-API-Key", "");
 
       expect(response.status).toBe(401);
-    });
-  });
-
-  describe("Debug Key", () => {
-    it("should allow access with valid debug key when configured", async () => {
-      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-
-      const response = await request(
-        createTestApp({ apiKey: validApiKey, debugKey: validDebugKey })
-      )
-        .get("/api/test")
-        .set("X-API-Key", validDebugKey);
-
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe("success");
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[DEBUG ACCESS]")
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    it("should reject debug key when not configured", async () => {
-      const response = await request(createTestApp({ apiKey: validApiKey }))
-        .get("/api/test")
-        .set("X-API-Key", validDebugKey);
-
-      expect(response.status).toBe(401);
-    });
-
-    it("should still accept main API key when debug key is configured", async () => {
-      const response = await request(
-        createTestApp({ apiKey: validApiKey, debugKey: validDebugKey })
-      )
-        .get("/api/test")
-        .set("X-API-Key", validApiKey);
-
-      expect(response.status).toBe(200);
     });
   });
 
