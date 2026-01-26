@@ -134,7 +134,7 @@ export const getPlayerEseaSeasons = async (
   playerId: string,
   game = "cs2"
 ): Promise<CompetitionInfo[]> => {
-  const history = await getPlayerHistory(playerId, game, 100);
+  const history = await getPlayerHistory(playerId, game, 1000);
   const competitions = new Map<string, CompetitionInfo>();
 
   for (const match of history.items) {
@@ -166,7 +166,7 @@ export const getPlayerStatsForCompetition = async (
   competitionId: string,
   game = "cs2"
 ): Promise<PlayerSeasonStats> => {
-  const history = await getPlayerHistory(playerId, game, 100);
+  const history = await getPlayerHistory(playerId, game, 1000);
 
   const competitionMatches = history.items.filter(
     (match) => match.competition_id === competitionId
