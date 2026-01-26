@@ -5,6 +5,10 @@ export const ORGANIZERS = {
   ESEA: "08b06cfc-74d0-454b-9a51-feda4b6b18da",
 } as const;
 
+// Pagination constants
+const FACEIT_MAX_LIMIT = 100;
+const DEFAULT_MAX_MATCHES = 500;
+
 // API helpers
 const getApiKey = (): string => {
   const apiKey = process.env.FACEIT_API_KEY;
@@ -88,19 +92,38 @@ export interface PlayerSeasonStats {
 }
 
 // Internal API calls
-const getPlayerHistory = async (
+const getPlayerHistoryPaginated = async (
   playerId: string,
   game: string,
-  limit: number
+  maxMatches: number = DEFAULT_MAX_MATCHES
 ): Promise<MatchHistoryResponse> => {
-  const params = new URLSearchParams({
-    game,
-    offset: "0",
-    limit: limit.toString(),
-  });
-  return faceitFetch<MatchHistoryResponse>(
-    `/players/${playerId}/history?${params}`
-  );
+  const allItems: MatchHistoryItem[] = [];
+  let offset = 0;
+
+  while (allItems.length < maxMatches) {
+    const limit = Math.min(FACEIT_MAX_LIMIT, maxMatches - allItems.length);
+
+    const params = new URLSearchParams({
+      game,
+      offset: offset.toString(),
+      limit: limit.toString(),
+    });
+
+    const response = await faceitFetch<MatchHistoryResponse>(
+      `/players/${playerId}/history?${params}`
+    );
+
+    allItems.push(...response.items);
+
+    // Stop if we've exhausted available data
+    if (response.items.length < limit) {
+      break;
+    }
+
+    offset += limit;
+  }
+
+  return { items: allItems };
 };
 
 const getMatchStats = async (matchId: string): Promise<MatchStatsResponse> => {
@@ -134,7 +157,7 @@ export const getPlayerEseaSeasons = async (
   playerId: string,
   game = "cs2"
 ): Promise<CompetitionInfo[]> => {
-  const history = await getPlayerHistory(playerId, game, 1000);
+  const history = await getPlayerHistoryPaginated(playerId, game);
   const competitions = new Map<string, CompetitionInfo>();
 
   for (const match of history.items) {
@@ -166,7 +189,7 @@ export const getPlayerStatsForCompetition = async (
   competitionId: string,
   game = "cs2"
 ): Promise<PlayerSeasonStats> => {
-  const history = await getPlayerHistory(playerId, game, 1000);
+  const history = await getPlayerHistoryPaginated(playerId, game);
 
   const competitionMatches = history.items.filter(
     (match) => match.competition_id === competitionId
