@@ -6,6 +6,7 @@ import { config } from "dotenv";
 import { router } from "./routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimiter } from "./middleware/rateLimit";
+import { createApiKeyAuth } from "./middleware/apiKeyAuth";
 
 config();
 
@@ -46,10 +47,36 @@ const corsOptions = {
   },
 };
 
+const getApiKeyMiddleware = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.warn("WARNING: API_KEY not set. API key authentication disabled.");
+    return null;
+  }
+
+  const debugKey = process.env.DEBUG_API_KEY;
+  const allowDebugInProd = process.env.ALLOW_DEBUG_KEY_IN_PRODUCTION === "true";
+
+  return createApiKeyAuth({
+    apiKey,
+    debugKey:
+      process.env.NODE_ENV !== "production" || allowDebugInProd
+        ? debugKey
+        : undefined,
+    excludePaths: ["/health", "/docs", "/openapi.yaml", "/openapi.json", "/"],
+  });
+};
+
 app.use(errorHandler);
 app.use(helmet());
 app.use(rateLimiter);
 app.use(cors(corsOptions));
+
+const apiKeyMiddleware = getApiKeyMiddleware();
+if (apiKeyMiddleware) {
+  app.use(apiKeyMiddleware);
+}
+
 app.use(bodyParser());
 app.use(router.routes());
 app.use(router.allowedMethods());
