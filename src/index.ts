@@ -6,6 +6,7 @@ import { config } from "dotenv";
 import { router } from "./routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { rateLimiter } from "./middleware/rateLimit";
+import { createApiKeyAuth } from "./middleware/apiKeyAuth";
 
 config();
 
@@ -46,10 +47,29 @@ const corsOptions = {
   },
 };
 
+const getApiKeyMiddleware = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.warn("WARNING: API_KEY not set. API key authentication disabled.");
+    return null;
+  }
+
+  return createApiKeyAuth({
+    apiKey,
+    excludePaths: ["/health", "/docs", "/openapi.yaml", "/openapi.json"],
+  });
+};
+
 app.use(errorHandler);
 app.use(helmet());
 app.use(rateLimiter);
 app.use(cors(corsOptions));
+
+const apiKeyMiddleware = getApiKeyMiddleware();
+if (apiKeyMiddleware) {
+  app.use(apiKeyMiddleware);
+}
+
 app.use(bodyParser());
 app.use(router.routes());
 app.use(router.allowedMethods());
