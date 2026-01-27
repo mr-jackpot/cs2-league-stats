@@ -40,12 +40,7 @@ export const getPlayer = async (ctx: Context): Promise<void> => {
   }
 
   const player = await getPlayerById(playerId);
-  ctx.body = {
-    player_id: player.player_id,
-    nickname: player.nickname,
-    avatar: player.avatar,
-    country: player.country,
-  };
+  ctx.body = player;
 };
 
 export const searchPlayersByName = async (ctx: Context): Promise<void> => {

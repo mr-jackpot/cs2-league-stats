@@ -61,6 +61,37 @@ interface MatchStatsResponse {
   }>;
 }
 
+export interface FaceitPlayer {
+  player_id: string;
+  nickname: string;
+  avatar: string;
+  country: string;
+  cover_image: string;
+  platforms: Record<string, string>;
+  games: Record<string, {
+    region: string;
+    game_player_id: string;
+    skill_level: number;
+    faceit_elo: number;
+    game_player_name: string;
+    skill_level_label: string;
+    game_profile_id: string;
+  }>;
+  settings: {
+    language: string;
+  };
+  friends_ids: string[];
+  new_steam_id: string;
+  steam_id_64: string;
+  steam_nickname: string;
+  memberships: string[];
+  faceit_url: string;
+  membership_type: string;
+  cover_featured_image: string;
+  verified: boolean;
+  activated_at: string;
+}
+
 export interface CompetitionInfo {
   competition_id: string;
   competition_name: string;
@@ -131,10 +162,8 @@ const getMatchStats = async (matchId: string): Promise<MatchStatsResponse> => {
 };
 
 // Public API
-export const getPlayerById = async (
-  playerId: string
-): Promise<{ player_id: string; nickname: string; avatar: string; country: string }> => {
-  return faceitFetch(`/players/${playerId}`);
+export const getPlayerById = async (playerId: string): Promise<FaceitPlayer> => {
+  return faceitFetch<FaceitPlayer>(`/players/${playerId}`);
 };
 
 export const searchPlayers = async (

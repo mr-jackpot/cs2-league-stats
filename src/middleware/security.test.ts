@@ -187,6 +187,20 @@ describe("Security Middleware", () => {
         nickname: "TestPlayer",
         avatar: "https://example.com/avatar.jpg",
         country: "US",
+        cover_image: "",
+        platforms: {},
+        games: {},
+        settings: { language: "en" },
+        friends_ids: [],
+        new_steam_id: "",
+        steam_id_64: "",
+        steam_nickname: "",
+        memberships: [],
+        faceit_url: "",
+        membership_type: "",
+        cover_featured_image: "",
+        verified: false,
+        activated_at: "",
       });
 
       const response = await request(createTestApp({})).get(
