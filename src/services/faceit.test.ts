@@ -5,6 +5,7 @@ import {
   getPlayerStatsForCompetition,
   ORGANIZERS,
 } from "./faceit";
+import { matchStatsCache, playerHistoryCache, playerSeasonsCache } from "./cache";
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -14,6 +15,9 @@ global.fetch = mockFetch;
 beforeEach(() => {
   process.env.FACEIT_API_KEY = "test-api-key";
   mockFetch.mockReset();
+  matchStatsCache.flushAll();
+  playerHistoryCache.flushAll();
+  playerSeasonsCache.flushAll();
 });
 
 afterEach(() => {
@@ -296,5 +300,46 @@ describe("getPlayerStatsForCompetition", () => {
 
     // Should not throw, just return 0 matches
     expect(result.matches_played).toBe(0);
+  });
+});
+
+describe("faceitFetch retry on 429", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("should retry on 429 and succeed on second attempt", async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: { get: () => null },
+        text: () => Promise.resolve("Too Many Requests"),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ items: [] }),
+      });
+
+    const promise = searchPlayers("TestPlayer");
+    await vi.runAllTimersAsync();
+    await promise;
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("should throw after max attempts on persistent 429", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: { get: () => null },
+      text: () => Promise.resolve("Too Many Requests"),
+    });
+
+    // Attach the rejection handler before advancing timers to avoid unhandled rejection warnings
+    const assertion = expect(searchPlayers("TestPlayer")).rejects.toThrow("Rate limit exceeded after 3 attempts");
+    await vi.runAllTimersAsync();
+    await assertion;
+
+    expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 });
