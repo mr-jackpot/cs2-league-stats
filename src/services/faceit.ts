@@ -1,3 +1,5 @@
+import { matchStatsCache, playerHistoryCache, playerSeasonsCache } from "./cache";
+
 const FACEIT_API_BASE = "https://open.faceit.com/data/v4";
 
 // Known organizer IDs
@@ -7,7 +9,7 @@ export const ORGANIZERS = {
 
 // Pagination constants
 const FACEIT_MAX_LIMIT = 100;
-const DEFAULT_MAX_MATCHES = 500;
+const DEFAULT_MAX_MATCHES = parseInt(process.env.FACEIT_MAX_MATCHES || "200", 10);
 
 // API helpers
 const getApiKey = (): string => {
@@ -18,13 +20,32 @@ const getApiKey = (): string => {
   return apiKey;
 };
 
-const faceitFetch = async <T>(endpoint: string): Promise<T> => {
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+const FACEIT_RETRY_MAX_ATTEMPTS = 3;
+const FACEIT_RETRY_BASE_DELAY_MS = 1000;
+
+const faceitFetch = async <T>(endpoint: string, attempt = 1): Promise<T> => {
   const response = await fetch(`${FACEIT_API_BASE}${endpoint}`, {
     headers: {
       Authorization: `Bearer ${getApiKey()}`,
       Accept: "application/json",
     },
   });
+
+  if (response.status === 429) {
+    if (attempt >= FACEIT_RETRY_MAX_ATTEMPTS) {
+      const error = await response.text();
+      throw new Error(`FACEIT API error (429): Rate limit exceeded after ${attempt} attempts: ${error}`);
+    }
+    const retryAfterHeader = response.headers.get("Retry-After");
+    const delayMs = retryAfterHeader
+      ? parseInt(retryAfterHeader, 10) * 1000
+      : FACEIT_RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+    await sleep(delayMs);
+    return faceitFetch<T>(endpoint, attempt + 1);
+  }
 
   if (!response.ok) {
     const error = await response.text();
@@ -128,6 +149,10 @@ const getPlayerHistoryPaginated = async (
   game: string,
   maxMatches: number = DEFAULT_MAX_MATCHES
 ): Promise<MatchHistoryResponse> => {
+  const cacheKey = `history:${playerId}:${game}:${maxMatches}`;
+  const cached = playerHistoryCache.get<MatchHistoryResponse>(cacheKey);
+  if (cached !== undefined) return cached;
+
   const allItems: MatchHistoryItem[] = [];
   let offset = 0;
 
@@ -154,11 +179,18 @@ const getPlayerHistoryPaginated = async (
     offset += limit;
   }
 
-  return { items: allItems };
+  const result = { items: allItems };
+  playerHistoryCache.set(cacheKey, result);
+  return result;
 };
 
 const getMatchStats = async (matchId: string): Promise<MatchStatsResponse> => {
-  return faceitFetch<MatchStatsResponse>(`/matches/${matchId}/stats`);
+  const cacheKey = `match:${matchId}`;
+  const cached = matchStatsCache.get<MatchStatsResponse>(cacheKey);
+  if (cached !== undefined) return cached;
+  const result = await faceitFetch<MatchStatsResponse>(`/matches/${matchId}/stats`);
+  matchStatsCache.set(cacheKey, result);
+  return result;
 };
 
 // Public API
@@ -186,6 +218,10 @@ export const getPlayerEseaSeasons = async (
   playerId: string,
   game = "cs2"
 ): Promise<CompetitionInfo[]> => {
+  const cacheKey = `seasons:${playerId}:${game}`;
+  const cached = playerSeasonsCache.get<CompetitionInfo[]>(cacheKey);
+  if (cached !== undefined) return cached;
+
   const history = await getPlayerHistoryPaginated(playerId, game);
   const competitions = new Map<string, CompetitionInfo>();
 
@@ -210,7 +246,9 @@ export const getPlayerEseaSeasons = async (
     }
   }
 
-  return Array.from(competitions.values());
+  const result = Array.from(competitions.values());
+  playerSeasonsCache.set(cacheKey, result);
+  return result;
 };
 
 export const getPlayerStatsForCompetition = async (
